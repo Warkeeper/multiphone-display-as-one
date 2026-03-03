@@ -43,7 +43,6 @@ function drawFrame() {
     const viewport = getViewportMetrics();
 
     const elapsed = Date.now() - roomConfig.startTimestamp;
-    const totalWidth = viewport.width * roomConfig.deviceCount;
     const offsetX = (roomConfig.deviceIndex - 1) * viewport.width;
     const textGap = Math.max(roomConfig.fontSize * 0.8, 24);
     const repeatDistance = textWidth + textGap;
@@ -174,7 +173,7 @@ async function waitForStartTimestamp(roomId) {
 }
 
 async function init() {
-    await tryLockLandscapeOrientation();
+    tryLockLandscapeOrientation();
     resizeCanvas();
 
     const params = new URLSearchParams(window.location.search);
