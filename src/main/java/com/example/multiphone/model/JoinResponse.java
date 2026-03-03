@@ -7,6 +7,7 @@ public record JoinResponse(
         int speed,
         int fontSize,
         String color,
-        long startTimestamp
+        long startTimestamp,
+        int[] viewportWidths
 ) {
 }

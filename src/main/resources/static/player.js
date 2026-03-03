@@ -9,6 +9,24 @@ let textWidth = 0;
 let countdownTimer = null;
 let waitingTimer = null;
 
+function getViewportWidths() {
+    const serverWidths = Array.isArray(roomConfig.viewportWidths) ? roomConfig.viewportWidths : [];
+    return Array.from({ length: roomConfig.deviceCount }, (_, index) => {
+        const width = Number(serverWidths[index]);
+        return Number.isFinite(width) && width > 0 ? width : window.innerWidth;
+    });
+}
+
+function getTotalWidthAndOffset() {
+    const viewportWidths = getViewportWidths();
+    const totalWidth = viewportWidths.reduce((sum, width) => sum + width, 0);
+    const offsetX = viewportWidths
+        .slice(0, Math.max(0, roomConfig.deviceIndex - 1))
+        .reduce((sum, width) => sum + width, 0);
+
+    return { totalWidth, offsetX };
+}
+
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -18,10 +36,9 @@ function drawFrame() {
     if (!roomConfig) return;
 
     const elapsed = Date.now() - roomConfig.startTimestamp;
-    const totalWidth = window.innerWidth * roomConfig.deviceCount;
-    const offsetX = (roomConfig.deviceIndex - 1) * window.innerWidth;
+    const { totalWidth, offsetX } = getTotalWidthAndOffset();
     const textGap = Math.max(roomConfig.fontSize * 0.8, 24);
-    const repeatDistance = textWidth + textGap;
+    const repeatDistance = Math.max(textWidth + textGap, totalWidth);
     const loopProgress = ((roomConfig.speed * elapsed) / 1000) % repeatDistance;
     const globalX = -loopProgress;
 
@@ -64,6 +81,10 @@ async function fetchRoomStatus(roomId) {
 async function waitUntilAllJoined(roomId) {
     while (true) {
         const status = await fetchRoomStatus(roomId);
+        if (Array.isArray(status.viewportWidths)) {
+            roomConfig.viewportWidths = status.viewportWidths;
+        }
+
         if (status.startTimestamp > 0) {
             roomConfig.startTimestamp = status.startTimestamp;
             return;
@@ -129,6 +150,10 @@ async function reportReady(roomId) {
 async function waitForStartTimestamp(roomId) {
     while (true) {
         const status = await fetchRoomStatus(roomId);
+        if (Array.isArray(status.viewportWidths)) {
+            roomConfig.viewportWidths = status.viewportWidths;
+        }
+
         if (status.startTimestamp > 0) {
             roomConfig.startTimestamp = status.startTimestamp;
             return;
@@ -186,6 +211,10 @@ async function init() {
 
         try {
             const readyResult = await reportReady(roomId);
+            if (Array.isArray(readyResult.viewportWidths)) {
+                roomConfig.viewportWidths = readyResult.viewportWidths;
+            }
+
             if (readyResult.startTimestamp > 0) {
                 roomConfig.startTimestamp = readyResult.startTimestamp;
                 readyBtn.hidden = true;
