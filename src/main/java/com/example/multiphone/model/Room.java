@@ -1,6 +1,8 @@
 package com.example.multiphone.model;
 
 import java.time.Instant;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -13,6 +15,7 @@ public class Room {
     private final String color;
     private final AtomicInteger assignedCount = new AtomicInteger(0);
     private final AtomicLong startTimestamp = new AtomicLong(0);
+    private final Map<Integer, DeviceMetrics> readyDeviceMetrics = new ConcurrentHashMap<>();
 
     public Room(String roomId, int deviceCount, String text, int speed, int fontSize, String color) {
         this.roomId = roomId;
@@ -71,14 +74,26 @@ public class Room {
         return assignedCount.get();
     }
 
-    /**
-     * 当设备加入数达到设定数量后，设置统一开始时间（仅设置一次）。
-     */
-    public long triggerCountdownIfReady(long delayMillis) {
-        if (assignedCount.get() >= deviceCount) {
+    public int getReportedReadyCount() {
+        return readyDeviceMetrics.size();
+    }
+
+    public long reportReadyAndMaybeTriggerCountdown(int deviceIndex, int viewportWidth, int viewportHeight,
+                                                    int devicePixelRatioTimes100, long delayMillis) {
+        if (deviceIndex < 1 || deviceIndex > deviceCount) {
+            return startTimestamp.get();
+        }
+
+        readyDeviceMetrics.put(deviceIndex, new DeviceMetrics(viewportWidth, viewportHeight, devicePixelRatioTimes100));
+
+        if (assignedCount.get() >= deviceCount && readyDeviceMetrics.size() >= deviceCount) {
             long planned = Instant.now().toEpochMilli() + delayMillis;
             startTimestamp.compareAndSet(0, planned);
         }
+
         return startTimestamp.get();
+    }
+
+    public record DeviceMetrics(int viewportWidth, int viewportHeight, int devicePixelRatioTimes100) {
     }
 }

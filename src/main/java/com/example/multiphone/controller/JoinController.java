@@ -13,7 +13,6 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/api")
 public class JoinController {
-    private static final long START_DELAY_MILLIS = 10_000;
 
     private final RoomStore roomStore;
 
@@ -33,7 +32,6 @@ public class JoinController {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Room is full");
         }
 
-        long startTimestamp = room.triggerCountdownIfReady(START_DELAY_MILLIS);
         return new JoinResponse(
                 deviceIndex,
                 room.getDeviceCount(),
@@ -41,7 +39,7 @@ public class JoinController {
                 room.getSpeed(),
                 room.getFontSize(),
                 room.getColor(),
-                startTimestamp
+                room.getStartTimestamp()
         );
     }
 }
