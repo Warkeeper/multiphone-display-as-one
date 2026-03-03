@@ -1,6 +1,7 @@
 package com.example.multiphone.model;
 
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -92,6 +93,17 @@ public class Room {
         }
 
         return startTimestamp.get();
+    }
+
+    public int[] getViewportWidthsByDeviceIndex() {
+        int[] widths = new int[deviceCount];
+        Arrays.fill(widths, -1);
+        readyDeviceMetrics.forEach((index, metrics) -> {
+            if (index >= 1 && index <= deviceCount) {
+                widths[index - 1] = metrics.viewportWidth();
+            }
+        });
+        return widths;
     }
 
     public record DeviceMetrics(int viewportWidth, int viewportHeight, int devicePixelRatioTimes100) {

@@ -6,6 +6,7 @@ public record RoomStatusResponse(
         int reportedReadyCount,
         int deviceCount,
         long startTimestamp,
-        boolean ready
+        boolean ready,
+        int[] viewportWidths
 ) {
 }

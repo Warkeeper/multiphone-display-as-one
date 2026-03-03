@@ -39,7 +39,8 @@ public class JoinController {
                 room.getSpeed(),
                 room.getFontSize(),
                 room.getColor(),
-                room.getStartTimestamp()
+                room.getStartTimestamp(),
+                room.getViewportWidthsByDeviceIndex()
         );
     }
 }

@@ -44,6 +44,6 @@ public class ReadyController {
                 START_DELAY_MILLIS
         );
 
-        return new ReadyResponse(room.getReportedReadyCount(), room.getDeviceCount(), startTimestamp);
+        return new ReadyResponse(room.getReportedReadyCount(), room.getDeviceCount(), startTimestamp, room.getViewportWidthsByDeviceIndex());
     }
 }

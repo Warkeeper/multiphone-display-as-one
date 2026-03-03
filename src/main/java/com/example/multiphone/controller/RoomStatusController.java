@@ -34,7 +34,8 @@ public class RoomStatusController {
                 room.getReportedReadyCount(),
                 room.getDeviceCount(),
                 startTimestamp,
-                startTimestamp > 0
+                startTimestamp > 0,
+                room.getViewportWidthsByDeviceIndex()
         );
     }
 }
