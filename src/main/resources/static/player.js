@@ -18,7 +18,9 @@ function drawFrame() {
     const elapsed = Date.now() - roomConfig.startTimestamp;
     const totalWidth = window.innerWidth * roomConfig.deviceCount;
     const offsetX = (roomConfig.deviceIndex - 1) * window.innerWidth;
-    const globalX = totalWidth - (roomConfig.speed * elapsed) / 1000;
+    const loopDistance = totalWidth + textWidth;
+    const loopProgress = ((roomConfig.speed * elapsed) / 1000) % loopDistance;
+    const globalX = totalWidth - loopProgress;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
@@ -33,12 +35,6 @@ function drawFrame() {
     const localX = globalX - offsetX;
     ctx.fillText(roomConfig.text, localX, canvas.height / 2);
     ctx.restore();
-
-    // 文字完全滚出当前设备屏幕后结束动画。
-    if (localX + textWidth < 0) {
-        statusEl.textContent = '播放完成';
-        return;
-    }
 
     animationId = requestAnimationFrame(drawFrame);
 }
