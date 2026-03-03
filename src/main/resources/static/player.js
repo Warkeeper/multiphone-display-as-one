@@ -56,6 +56,7 @@ const ctx = canvas.getContext('2d');
 let roomConfig = null;
 let animationId = null;
 let textWidth = 0;
+let scrollingText = '';
 let countdownTimer = null;
 let waitingTimer = null;
 
@@ -86,9 +87,8 @@ function drawFrame() {
     if (!roomConfig) return;
 
     const elapsed = Date.now() - roomConfig.startTimestamp;
-    const { totalWidth, offsetX } = getTotalWidthAndOffset();
-    const textGap = Math.max(roomConfig.fontSize * 0.8, 24);
-    const repeatDistance = Math.max(textWidth + textGap, totalWidth);
+    const { offsetX } = getTotalWidthAndOffset();
+    const repeatDistance = textWidth;
     const loopProgress = ((roomConfig.speed * elapsed) / 1000) % repeatDistance;
     const globalX = -loopProgress;
 
@@ -112,7 +112,7 @@ function drawFrame() {
     }
 
     while (drawX < visibleEnd) {
-        ctx.fillText(roomConfig.text, drawX, canvas.height / 2);
+        ctx.fillText(scrollingText, drawX, canvas.height / 2);
         drawX += repeatDistance;
     }
     ctx.restore();
@@ -237,7 +237,8 @@ async function init() {
     roomConfig = await response.json();
 
     ctx.font = `${roomConfig.fontSize}px sans-serif`;
-    textWidth = ctx.measureText(roomConfig.text).width;
+    scrollingText = `${roomConfig.text}${' '.repeat(8)}`;
+    textWidth = ctx.measureText(scrollingText).width;
 
     if (roomConfig.startTimestamp > 0) {
         startPlayback();
