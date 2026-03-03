@@ -1,5 +1,55 @@
 const statusEl = document.getElementById('status');
 const readyBtn = document.getElementById('readyBtn');
+const fullscreenBtn = document.getElementById('fullscreenBtn');
+
+function isLandscape() {
+    return window.innerWidth >= window.innerHeight;
+}
+
+async function tryEnterFullscreen() {
+    if (!document.fullscreenEnabled || document.fullscreenElement) {
+        return true;
+    }
+
+    try {
+        await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+        return true;
+    } catch (error) {
+        return false;
+    }
+}
+
+async function tryLockLandscape() {
+    if (!screen.orientation || typeof screen.orientation.lock !== 'function') {
+        return true;
+    }
+
+    try {
+        await screen.orientation.lock('landscape');
+        return true;
+    } catch (error) {
+        return false;
+    }
+}
+
+function updateFullscreenPrompt() {
+    const needsLandscape = !isLandscape();
+    const needsFullscreen = !!document.fullscreenEnabled && !document.fullscreenElement;
+
+    fullscreenBtn.hidden = !(needsLandscape || needsFullscreen);
+}
+
+async function ensureImmersiveMode({ fromGesture = false } = {}) {
+    if (fromGesture) {
+        await tryEnterFullscreen();
+        await tryLockLandscape();
+    } else if (document.fullscreenElement) {
+        await tryLockLandscape();
+    }
+
+    updateFullscreenPrompt();
+}
+
 const canvas = document.getElementById('playerCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -167,6 +217,8 @@ async function waitForStartTimestamp(roomId) {
 }
 
 async function init() {
+    await ensureImmersiveMode();
+
     resizeCanvas();
 
     const params = new URLSearchParams(window.location.search);
@@ -233,7 +285,20 @@ async function init() {
     }, { once: true });
 }
 
-window.addEventListener('resize', resizeCanvas);
+window.addEventListener('resize', () => {
+    resizeCanvas();
+    updateFullscreenPrompt();
+});
+window.addEventListener('orientationchange', updateFullscreenPrompt);
+document.addEventListener('fullscreenchange', () => {
+    if (document.fullscreenElement) {
+        tryLockLandscape();
+    }
+    updateFullscreenPrompt();
+});
+fullscreenBtn.addEventListener('click', async () => {
+    await ensureImmersiveMode({ fromGesture: true });
+});
 window.addEventListener('beforeunload', () => {
     if (animationId) cancelAnimationFrame(animationId);
     if (countdownTimer) clearInterval(countdownTimer);
