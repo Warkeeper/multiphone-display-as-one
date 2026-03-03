@@ -31,6 +31,7 @@ public class RoomStatusController {
         return new RoomStatusResponse(
                 roomId,
                 room.getAssignedCount(),
+                room.getReportedReadyCount(),
                 room.getDeviceCount(),
                 startTimestamp,
                 startTimestamp > 0

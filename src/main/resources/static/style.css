@@ -81,3 +81,12 @@ a {
     z-index: 1;
     font-size: 14px;
 }
+
+.action-btn {
+    position: fixed;
+    top: 50px;
+    left: 10px;
+    z-index: 1;
+    font-size: 14px;
+    padding: 8px 12px;
+}

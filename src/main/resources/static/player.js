@@ -1,4 +1,5 @@
 const statusEl = document.getElementById('status');
+const readyBtn = document.getElementById('readyBtn');
 const canvas = document.getElementById('playerCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -6,6 +7,7 @@ let roomConfig = null;
 let animationId = null;
 let textWidth = 0;
 let countdownTimer = null;
+let waitingTimer = null;
 
 function resizeCanvas() {
     canvas.width = window.innerWidth;
@@ -39,18 +41,25 @@ function drawFrame() {
     animationId = requestAnimationFrame(drawFrame);
 }
 
-async function waitForStartTimestamp(roomId) {
+async function fetchRoomStatus(roomId) {
+    const response = await fetch(`/api/rooms/${encodeURIComponent(roomId)}/status`);
+    if (!response.ok) {
+        throw new Error('获取房间状态失败');
+    }
+    return response.json();
+}
+
+async function waitUntilAllJoined(roomId) {
     while (true) {
-        const response = await fetch(`/api/rooms/${encodeURIComponent(roomId)}/status`);
-        if (!response.ok) {
-            statusEl.textContent = '获取房间状态失败';
-            return 0;
+        const status = await fetchRoomStatus(roomId);
+        if (status.startTimestamp > 0) {
+            roomConfig.startTimestamp = status.startTimestamp;
+            return;
         }
 
-        const status = await response.json();
-        if (status.startTimestamp > 0) {
-            statusEl.textContent = '所有设备已加入，准备倒计时';
-            return status.startTimestamp;
+        if (status.joinedCount >= status.deviceCount) {
+            statusEl.textContent = '所有设备已加入，请点击开始按钮并等待其他设备准备';
+            return;
         }
 
         statusEl.textContent = `等待其他设备加入（${status.joinedCount}/${status.deviceCount}）`;
@@ -78,6 +87,48 @@ function startPlayback() {
     countdownTimer = setInterval(renderCountdown, 200);
 }
 
+function showReadyButton() {
+    readyBtn.hidden = false;
+    readyBtn.disabled = false;
+    readyBtn.textContent = `开始（设备 #${roomConfig.deviceIndex}）`;
+}
+
+async function reportReady(roomId) {
+    const body = {
+        deviceIndex: roomConfig.deviceIndex,
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        devicePixelRatioTimes100: Math.round(window.devicePixelRatio * 100)
+    };
+
+    const response = await fetch(`/api/rooms/${encodeURIComponent(roomId)}/ready`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+        throw new Error('上报设备准备信息失败');
+    }
+
+    return response.json();
+}
+
+async function waitForStartTimestamp(roomId) {
+    while (true) {
+        const status = await fetchRoomStatus(roomId);
+        if (status.startTimestamp > 0) {
+            roomConfig.startTimestamp = status.startTimestamp;
+            return;
+        }
+
+        statusEl.textContent = `等待其他设备点击开始并上报信息（${status.reportedReadyCount}/${status.deviceCount}）`;
+        await new Promise((resolve) => {
+            waitingTimer = setTimeout(resolve, 300);
+        });
+    }
+}
+
 async function init() {
     resizeCanvas();
 
@@ -96,22 +147,56 @@ async function init() {
 
     roomConfig = await response.json();
 
-    if (roomConfig.startTimestamp <= 0) {
-        roomConfig.startTimestamp = await waitForStartTimestamp(roomId);
-        if (roomConfig.startTimestamp <= 0) {
-            return;
-        }
-    }
-
     ctx.font = `${roomConfig.fontSize}px sans-serif`;
     textWidth = ctx.measureText(roomConfig.text).width;
-    startPlayback();
+
+    if (roomConfig.startTimestamp > 0) {
+        startPlayback();
+        return;
+    }
+
+    try {
+        await waitUntilAllJoined(roomId);
+    } catch (error) {
+        statusEl.textContent = error.message;
+        return;
+    }
+
+    if (roomConfig.startTimestamp > 0) {
+        startPlayback();
+        return;
+    }
+
+    showReadyButton();
+    readyBtn.addEventListener('click', async () => {
+        readyBtn.disabled = true;
+        statusEl.textContent = '已点击开始，正在上报设备信息...';
+
+        try {
+            const readyResult = await reportReady(roomId);
+            if (readyResult.startTimestamp > 0) {
+                roomConfig.startTimestamp = readyResult.startTimestamp;
+                readyBtn.hidden = true;
+                startPlayback();
+                return;
+            }
+
+            statusEl.textContent = `上报成功，等待其余设备（${readyResult.reportedReadyCount}/${readyResult.deviceCount}）`;
+            await waitForStartTimestamp(roomId);
+            readyBtn.hidden = true;
+            startPlayback();
+        } catch (error) {
+            readyBtn.disabled = false;
+            statusEl.textContent = error.message;
+        }
+    }, { once: true });
 }
 
 window.addEventListener('resize', resizeCanvas);
 window.addEventListener('beforeunload', () => {
     if (animationId) cancelAnimationFrame(animationId);
     if (countdownTimer) clearInterval(countdownTimer);
+    if (waitingTimer) clearTimeout(waitingTimer);
 });
 
 init();
