@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>创建拼接播放房间</title>
+    <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<div class="page">
+    <h1>创建房间</h1>
+    <form id="createRoomForm" class="card">
+        <label>设备总数
+            <input type="number" name="deviceCount" min="1" value="3" required />
+        </label>
+        <label>播放文字
+            <input type="text" name="text" value="HELLO MULTI SCREEN" required />
+        </label>
+        <label>滚动速度 (px/s)
+            <input type="number" name="speed" min="1" value="80" required />
+        </label>
+        <label>字体大小
+            <input type="number" name="fontSize" min="1" value="64" required />
+        </label>
+        <label>字体颜色
+            <input type="text" name="color" value="#00ff88" required />
+        </label>
+        <button type="submit">创建</button>
+    </form>
+
+    <div id="result" class="card hidden"></div>
+</div>
+
+<script>
+    const form = document.getElementById('createRoomForm');
+    const result = document.getElementById('result');
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const data = new FormData(form);
+
+        const payload = {
+            deviceCount: Number(data.get('deviceCount')),
+            text: String(data.get('text')),
+            speed: Number(data.get('speed')),
+            fontSize: Number(data.get('fontSize')),
+            color: String(data.get('color'))
+        };
+
+        const response = await fetch('/api/rooms', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            result.classList.remove('hidden');
+            result.innerHTML = '<p>创建失败，请检查输入参数。</p>';
+            return;
+        }
+
+        const json = await response.json();
+        const joinUrl = `${window.location.origin}/player.html?roomId=${json.roomId}`;
+
+        result.classList.remove('hidden');
+        result.innerHTML = `
+            <p><strong>房间号：</strong>${json.roomId}</p>
+            <p><strong>统一开始时间：</strong>${new Date(json.startTimestamp).toLocaleString()}</p>
+            <p>请在每台手机打开以下链接（每台设备只打开一次）：</p>
+            <p><a href="${joinUrl}" target="_blank">${joinUrl}</a></p>
+        `;
+    });
+</script>
+</body>
+</html>
