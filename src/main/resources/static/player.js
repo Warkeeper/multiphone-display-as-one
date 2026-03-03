@@ -2,13 +2,36 @@ const statusEl = document.getElementById('status');
 const readyBtn = document.getElementById('readyBtn');
 const fullscreenBtn = document.getElementById('fullscreenBtn');
 
+function isIosSafari() {
+    const ua = window.navigator.userAgent;
+    const isIOS = /iP(ad|hone|od)/.test(ua) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isWebKit = /WebKit/i.test(ua);
+    const isCriOS = /CriOS/i.test(ua);
+    const isFxiOS = /FxiOS/i.test(ua);
+
+    return isIOS && isWebKit && !isCriOS && !isFxiOS;
+}
+
+function canUseFullscreen() {
+    return !!document.fullscreenEnabled && typeof document.documentElement.requestFullscreen === 'function';
+}
+
+function canLockLandscape() {
+    return !!screen.orientation && typeof screen.orientation.lock === 'function';
+}
+
 function isLandscape() {
     return window.innerWidth >= window.innerHeight;
 }
 
 async function tryEnterFullscreen() {
-    if (!document.fullscreenEnabled || document.fullscreenElement) {
+    if (document.fullscreenElement) {
         return true;
+    }
+
+    if (!canUseFullscreen()) {
+        return false;
     }
 
     try {
@@ -20,8 +43,8 @@ async function tryEnterFullscreen() {
 }
 
 async function tryLockLandscape() {
-    if (!screen.orientation || typeof screen.orientation.lock !== 'function') {
-        return true;
+    if (!canLockLandscape()) {
+        return false;
     }
 
     try {
@@ -34,20 +57,33 @@ async function tryLockLandscape() {
 
 function updateFullscreenPrompt() {
     const needsLandscape = !isLandscape();
-    const needsFullscreen = !!document.fullscreenEnabled && !document.fullscreenElement;
+    const needsFullscreen = canUseFullscreen() && !document.fullscreenElement;
 
     fullscreenBtn.hidden = !(needsLandscape || needsFullscreen);
 }
 
 async function ensureImmersiveMode({ fromGesture = false } = {}) {
+    let enteredFullscreen = false;
+    let lockedLandscape = false;
+
     if (fromGesture) {
-        await tryEnterFullscreen();
-        await tryLockLandscape();
+        enteredFullscreen = await tryEnterFullscreen();
+        lockedLandscape = await tryLockLandscape();
     } else if (document.fullscreenElement) {
-        await tryLockLandscape();
+        lockedLandscape = await tryLockLandscape();
     }
 
     updateFullscreenPrompt();
+
+    if (
+        fromGesture &&
+        !isLandscape() &&
+        isIosSafari() &&
+        !enteredFullscreen &&
+        !lockedLandscape
+    ) {
+        statusEl.textContent = 'iOS Safari 不允许网页强制横屏/全屏，请手动旋转手机；可在 Safari 菜单中隐藏工具栏以获得更大显示区域。';
+    }
 }
 
 const canvas = document.getElementById('playerCanvas');
