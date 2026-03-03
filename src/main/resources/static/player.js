@@ -20,9 +20,10 @@ function drawFrame() {
     const elapsed = Date.now() - roomConfig.startTimestamp;
     const totalWidth = window.innerWidth * roomConfig.deviceCount;
     const offsetX = (roomConfig.deviceIndex - 1) * window.innerWidth;
-    const loopDistance = totalWidth + textWidth;
-    const loopProgress = ((roomConfig.speed * elapsed) / 1000) % loopDistance;
-    const globalX = totalWidth - loopProgress;
+    const textGap = Math.max(roomConfig.fontSize * 0.8, 24);
+    const repeatDistance = textWidth + textGap;
+    const loopProgress = ((roomConfig.speed * elapsed) / 1000) % repeatDistance;
+    const globalX = -loopProgress;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
@@ -35,7 +36,18 @@ function drawFrame() {
     ctx.textBaseline = 'middle';
 
     const localX = globalX - offsetX;
-    ctx.fillText(roomConfig.text, localX, canvas.height / 2);
+    const visibleStart = -repeatDistance;
+    const visibleEnd = canvas.width + repeatDistance;
+
+    let drawX = localX;
+    while (drawX > visibleStart) {
+        drawX -= repeatDistance;
+    }
+
+    while (drawX < visibleEnd) {
+        ctx.fillText(roomConfig.text, drawX, canvas.height / 2);
+        drawX += repeatDistance;
+    }
     ctx.restore();
 
     animationId = requestAnimationFrame(drawFrame);
